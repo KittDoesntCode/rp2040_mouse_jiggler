@@ -1,7 +1,5 @@
 #include <Adafruit_NeoPixel.h>
 #include <Adafruit_TinyUSB.h>
-#include <FreeRTOS.h>  // Included automatically with Arduino-Pico core
-#include <task.h>
 
 #define PIN 16
 #define NUMPIXELS 1
@@ -11,6 +9,9 @@ Adafruit_NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
 float redValue = 255.0;
 float greenValue = 0.0;
 float blueValue = 0.0;
+
+// Set LED brightness globally (0–255)
+pixels.setBrightness(10);
 
 // Variable to track the direction of color changes
 int redStep = -1;
@@ -43,6 +44,7 @@ float constrainColor(float color) {
 }
 
 void ledTask() {
+  // Update RGB values for color cycling
   redValue += redStep;
   greenValue += greenStep;
   blueValue += blueStep;
@@ -51,9 +53,12 @@ void ledTask() {
   greenValue = constrain(greenValue, 0, 255);
   blueValue = constrain(blueValue, 0, 255);
 
+  // Set pixel color
   pixels.setPixelColor(0, pixels.Color((int)redValue, (int)greenValue, (int)blueValue));
+
   pixels.show();
 
+  // Update color steps for smooth transition
   if (redValue <= 0 && greenValue >= 255) {
     redStep = 0;
     greenStep = -1;
@@ -80,16 +85,8 @@ void process_hid() {
     }
 
     usb_hid.mouseMove(RID_MOUSE, x, y);
-    
-    // Wait for HID to be ready and reset the mouse position
-    while (!usb_hid.ready()) {
-      vTaskDelay(2 / portTICK_PERIOD_MS);
-    }
-
-    // Reset the mouse back to the original position
+    while (!usb_hid.ready()) delay(2);
     usb_hid.mouseMove(RID_MOUSE, -x, -y);
-
-    // Update sequence and time
     moveSequence = (moveSequence + 1) % 4;
   }
 }
@@ -110,10 +107,10 @@ void setup() {
 
 void loop() {
   ledTask();
-  vTaskDelay(5 / portTICK_PERIOD_MS); // LED update every 5ms
+  delay(5); // LED update every 5ms
 }
 
 void loop1() {
   process_hid();
-  vTaskDelay(moveInterval / portTICK_PERIOD_MS);  // Mouse movement update
+  delay(moveInterval);  // Mouse movement update
 }
